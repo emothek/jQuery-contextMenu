@@ -171,8 +171,7 @@
                     offset = opt.$menu.position();
                 } else {
                     // x and y are given (by mouse event)
-                    var offsetParentOffset = opt.$menu.offsetParent().offset();
-                    offset = {top: y - offsetParentOffset.top, left: x -offsetParentOffset.left};
+                    offset = {top: y, left: x};
                 }
 
                 // correct offset if viewport demands it
@@ -448,6 +447,7 @@
                     offset;
 
                 e.preventDefault();
+                e.stopImmediatePropagation();
 
                 setTimeout(function () {
                     var $window;
@@ -468,13 +468,13 @@
                             sel.removeAllRanges();
                             sel.addRange(range);
                         }
-                        $(target).trigger(e);
+
                         root.$layer.show();
                     }
 
                     if (root.reposition && triggerAction) {
                         if (document.elementFromPoint) {
-                            if (root.$trigger.is(target)) {
+                            if (root.$trigger.is(target) || root.$trigger.has(target).length) {
                                 root.position.call(root.$trigger, root, x, y);
                                 return;
                             }
@@ -549,7 +549,7 @@
                 // If targetZIndex is heigher then opt.zIndex dont progress any futher.
                 // This is used to make sure that if you are using a dialog with a input / textarea / contenteditable div
                 // and its above the contextmenu it wont steal keys events
-                if (opt.$menu && parseInt(targetZIndex,10) > parseInt(opt.$menu.css("zIndex"),10)) {
+                if (targetZIndex > opt.zIndex) {
                     return;
                 }
                 switch (e.keyCode) {
@@ -836,7 +836,6 @@
                     return;
                 }
 
-
                 $this.trigger('contextmenu:focus');
             },
             // :hover done manually so key handling is possible
@@ -853,10 +852,6 @@
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     root.$selected = opt.$selected = opt.$node;
-                    return;
-                }
-
-                if(opt && opt.$menu && opt.$menu.hasClass('context-menu-visible')){
                     return;
                 }
 
@@ -891,7 +886,7 @@
                 }
 
                 // hide menu if callback doesn't stop that
-                if (callback.call(root.$trigger, key, root, e) !== false) {
+                if (callback.call(root.$trigger, key, root) !== false) {
                     root.$menu.trigger('contextmenu:hide');
                 } else if (root.$menu.parent().length) {
                     op.update.call(root.$trigger, root);
@@ -928,11 +923,6 @@
 
                 // remember selected
                 opt.$selected = root.$selected = $this;
-
-
-                if(opt && opt.$node && opt.$node.hasClass('context-menu-submenu')){
-                    opt.$node.addClass(root.classNames.hover);
-                }
 
                 // position sub-menu - do after show so dumb $.ui.position can keep up
                 if (opt.$node) {
@@ -1102,7 +1092,6 @@
                 if (typeof root === 'undefined') {
                     root = opt;
                 }
-
                 // create contextMenu
                 opt.$menu = $('<ul class="context-menu-list"></ul>').addClass(opt.className || '').data({
                     'contextMenu': opt,
@@ -1439,7 +1428,7 @@
                                 break;
 
                             case 'select':
-                                item.$input.val((item.selected === 0 ? "0" : item.selected) || '');
+                                item.$input.val(item.selected || '');
                                 break;
                         }
                     }
@@ -1689,9 +1678,6 @@
                     case 'left':
                         $context.on('click' + o.ns, o.selector, o, handle.click);
                         break;
-				    case 'touchstart':
-                        $context.on('touchstart' + o.ns, o.selector, o, handle.click);
-                        break;
                     /*
                      default:
                      // http://www.quirksmode.org/dom/events/contextmenu.html
@@ -1776,7 +1762,7 @@
                 break;
 
             case 'html5':
-                // if <command> and <menuitem> are not handled by the browser,
+                // if <command> or <menuitem> are not handled by the browser,
                 // or options was a bool true,
                 // initialize $.contextMenu for them
                 if ((!$.support.htmlCommand && !$.support.htmlMenuitem) || (typeof options === 'boolean' && options)) {
@@ -1905,13 +1891,14 @@
                         disabled: !!$node.attr('disabled'),
                         callback: (function () {
                             return function () {
-                                $node.get(0).click()
+                                $node.click();
                             };
                         })()
                     };
                     break;
 
                 // http://www.whatwg.org/specs/web-apps/current-work/multipage/commands.html#using-the-command-element-to-define-a-command
+
                 case 'menuitem':
                 case 'command':
                     switch ($node.attr('type')) {
@@ -1924,7 +1911,7 @@
                                 icon: $node.attr('icon'),
                                 callback: (function () {
                                     return function () {
-                                        $node.get(0).click()
+                                        $node.click();
                                     };
                                 })()
                             };
